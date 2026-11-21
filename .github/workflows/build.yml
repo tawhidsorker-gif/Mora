@@ -36,11 +36,13 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
-      - name: Install Gradle & generate wrapper
+      - name: Setup Gradle 7.5 wrapper
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gradle unzip
-          gradle wrapper --gradle-version 7.2 --distribution-type all
+          sudo apt-get install -y -qq unzip curl
+          curl -fsSL https://services.gradle.org/distributions/gradle-7.5-bin.zip -o /tmp/gradle-7.5.zip
+          unzip -q /tmp/gradle-7.5.zip -d /tmp/
+          /tmp/gradle-7.5/bin/gradle wrapper --gradle-version 7.5 --distribution-type all
           chmod +x ./gradlew
 
       - name: Build Debug APK
