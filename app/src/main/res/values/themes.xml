@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Mora" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/mora_bg</item>
+        <item name="android:statusBarColor">@color/mora_bg</item>
+        <item name="android:navigationBarColor">@color/mora_bg</item>
+        <item name="colorAccent">@color/mora_accent</item>
+    </style>
+</resources>

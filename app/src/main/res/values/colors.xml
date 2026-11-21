@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mora_bg">#080C18</color>
+    <color name="mora_card">#12192E</color>
+    <color name="mora_accent">#00E5FF</color>
+    <color name="mora_accent_alt">#7C4DFF</color>
+    <color name="mora_text">#F4F7FF</color>
+    <color name="mora_muted">#9AA6C8</color>
+</resources>
