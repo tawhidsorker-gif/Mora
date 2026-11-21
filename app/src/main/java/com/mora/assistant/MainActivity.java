@@ -1,175 +1,168 @@
 package com.mora.assistant;
 
-import android.app.Activity;
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import androidx.appcompat.app.AppCompatActivity;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Locale;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
 
-    private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
-    private static final String SYSTEM_PROMPT =
-        "You are Mora, a smart personal assistant for an Android 11 phone. " +
-        "Reply ONLY in valid JSON format (no markdown, no extra text). " +
-        "For phone actions use: {\"type\":\"command\",\"action\":\"open_app|check_notifications|send_message|change_setting|shutdown\",\"target\":\"<name>\",\"message\":\"<text>\",\"reply\":\"<short bangla>\"}. " +
-        "For normal chat or knowledge use: {\"type\":\"chat\",\"reply\":\"<helpful bangla answer>\"}.";
-
-    private TextView chatOutput;
-    private EditText inputBox;
+    private TextView tvChatLog, tvStatus;
+    private EditText etCommand;
+    private ScrollView scrollLog;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(24, 24, 24, 24);
+        ImageView ivLogo = findViewById(R.id.ivLogo);
+        tvChatLog = findViewById(R.id.tvChatLog);
+        tvStatus = findViewById(R.id.tvStatus);
+        etCommand = findViewById(R.id.etCommand);
+        scrollLog = findViewById(R.id.scrollLog);
+        Button btnSend = findViewById(R.id.btnSend);
+        Button btnAccessibility = findViewById(R.id.btnAccessibility);
+        Button btnNotification = findViewById(R.id.btnNotification);
 
-        Button btnAcc = new Button(this);
-        btnAcc.setText("Enable Accessibility");
-        btnAcc.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
-        root.addView(btnAcc);
+        ObjectAnimator pulse = ObjectAnimator.ofPropertyValuesHolder(
+                ivLogo,
+                PropertyValuesHolder.ofFloat("scaleX", 0.94f, 1.06f),
+                PropertyValuesHolder.ofFloat("scaleY", 0.94f, 1.06f)
+        );
+        pulse.setDuration(1100);
+        pulse.setRepeatCount(ObjectAnimator.INFINITE);
+        pulse.setRepeatMode(ObjectAnimator.REVERSE);
+        pulse.start();
 
-        Button btnNotif = new Button(this);
-        btnNotif.setText("Enable Notification Access");
-        btnNotif.setOnClickListener(v -> startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")));
-        root.addView(btnNotif);
+        btnAccessibility.setOnClickListener(v ->
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
 
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
-        scroll.setLayoutParams(scrollParams);
+        btnNotification.setOnClickListener(v ->
+                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
 
-        chatOutput = new TextView(this);
-        chatOutput.setText("Mora Ready (Android 11)\n\n");
-        chatOutput.setTextSize(15f);
-        scroll.addView(chatOutput);
-        root.addView(scroll);
-
-        inputBox = new EditText(this);
-        inputBox.setHint("Ask Mora or give a command...");
-        root.addView(inputBox);
-
-        Button btnSend = new Button(this);
-        btnSend.setText("Send");
-        btnSend.setOnClickListener(v -> {
-            String msg = inputBox.getText().toString().trim();
-            if (!msg.isEmpty()) {
-                inputBox.setText("");
-                appendLine("You: " + msg);
-                new Thread(() -> handlePrompt(msg)).start();
-            }
-        });
-        root.addView(btnSend);
-
-        setContentView(root);
+        appendLine("Mora: আসসালামু আলাইকুম! আমি মোরা—আপনার অ্যান্ড্রয়েড ১১ স্মার্ট অ্যাসিস্ট্যান্ট।");
+        btnSend.setOnClickListener(v -> handleUserInput());
     }
 
-    private void appendLine(String line) {
-        runOnUiThread(() -> chatOutput.append(line + "\n"));
-    }
+    private void handleUserInput() {
+        String input = etCommand.getText().toString().trim();
+        if (input.isEmpty()) return;
+        etCommand.setText("");
+        appendLine("You: " + input);
 
-    private void handlePrompt(String prompt) {
-        try {
-            if (GEMINI_API_KEY == null || GEMINI_API_KEY.isEmpty()) {
-                appendLine("Error: GEMINI_API_KEY is not configured.");
+        if (input.toLowerCase().contains("whatsapp")) {
+            Intent launch = getPackageManager().getLaunchIntentForPackage("com.whatsapp");
+            if (launch != null) {
+                startActivity(launch);
+                tvStatus.setText("WhatsApp খোলা হয়েছে — স্ক্রিন অ্যাকশন প্রস্তুত");
+                appendLine("Mora: WhatsApp খোলা হয়েছে। Accessibility চালু থাকলে স্ক্রিনের কন্ট্যাক্ট/ইনপুট অ্যাকশন চেষ্টা করা যাবে।");
+                mainHandler.postDelayed(() -> {
+                    MoraAccessibilityService service = MoraAccessibilityService.getInstance();
+                    if (service != null) {
+                        service.clickTextOrDesc("search");
+                    }
+                }, 1800);
                 return;
             }
-            String rawJson = callGemini(prompt).replace("```json", "").replace("```", "").trim();
-            JSONObject obj = new JSONObject(rawJson);
-            String type = obj.optString("type", "chat");
-            String reply = obj.optString("reply", "");
+        }
 
-            if ("command".equals(type)) {
-                String action = obj.optString("action", "");
-                String target = obj.optString("target", "");
-                appendLine("Mora: " + reply);
-                if ("open_app".equals(action)) {
-                    boolean opened = openAppByName(target);
-                    appendLine(opened ? "Opened: " + target : "App not found: " + target);
-                } else if ("check_notifications".equals(action)) {
-                    List<String> notifs = MoraNotificationService.getRecentNotifications();
-                    appendLine("Notifications (" + notifs.size() + "):");
-                    for (String n : notifs) {
-                        appendLine(" - " + n);
-                    }
-                } else if ("change_setting".equals(action)) {
-                    startActivity(new Intent(Settings.ACTION_SETTINGS));
-                }
+        tvStatus.setText("চিন্তা করছি (Timeout: 35s)...");
+        new Thread(() -> callGemini(input)).start();
+    }
+
+    private void callGemini(String prompt) {
+        HttpURLConnection conn = null;
+        try {
+            String apiKey = BuildConfig.GEMINI_API_KEY;
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                mainHandler.post(() -> {
+                    tvStatus.setText("API Key সেট করা নেই");
+                    appendLine("Error: GEMINI_API_KEY পাওয়া যায়নি।");
+                });
+                return;
+            }
+
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setConnectTimeout(35000);
+            conn.setReadTimeout(35000);
+            conn.setDoOutput(true);
+
+            JSONObject part = new JSONObject().put("text", prompt);
+            JSONObject content = new JSONObject().put("parts", new JSONArray().put(part));
+            JSONObject payload = new JSONObject().put("contents", new JSONArray().put(content));
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream(),
+                    StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            if (code >= 200 && code < 300) {
+                JSONObject resJson = new JSONObject(sb.toString());
+                String reply = resJson.getJSONArray("candidates")
+                        .getJSONObject(0)
+                        .getJSONObject("content")
+                        .getJSONArray("parts")
+                        .getJSONObject(0)
+                        .optString("text", "উত্তর পাওয়া যায়নি।");
+                mainHandler.post(() -> {
+                    tvStatus.setText("Mora Ready (Android 11)");
+                    appendLine("Mora: " + reply.trim());
+                });
             } else {
-                appendLine("Mora: " + reply);
+                mainHandler.post(() -> {
+                    tvStatus.setText("API Error (" + code + ")");
+                    appendLine("Error: HTTP " + code + " - " + sb.toString());
+                });
             }
         } catch (Exception e) {
-            appendLine("Error: " + e.getMessage());
+            String msg = e.getMessage() != null ? e.getMessage() : "timeout";
+            mainHandler.post(() -> {
+                tvStatus.setText("Connection Timeout / Error");
+                appendLine("Error: " + msg);
+            });
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 
-    private boolean openAppByName(String appName) {
-        PackageManager pm = getPackageManager();
-        String query = appName.toLowerCase(Locale.ROOT).trim();
-        List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-        for (ApplicationInfo info : apps) {
-            String label = pm.getApplicationLabel(info).toString().toLowerCase(Locale.ROOT);
-            String pkg = info.packageName.toLowerCase(Locale.ROOT);
-            if (label.contains(query) || pkg.contains(query)) {
-                Intent launch = pm.getLaunchIntentForPackage(info.packageName);
-                if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(launch);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private String callGemini(String userPrompt) throws Exception {
-        String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
-        URL url = new URL(endpoint);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(25000);
-        conn.setReadTimeout(25000);
-
-        JSONObject part = new JSONObject().put("text", SYSTEM_PROMPT + "\n\nUser: " + userPrompt);
-        JSONObject content = new JSONObject().put("parts", new JSONArray().put(part));
-        JSONObject payload = new JSONObject().put("contents", new JSONArray().put(content));
-
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
-        }
-
-        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) sb.append(line);
-        br.close();
-
-        JSONObject res = new JSONObject(sb.toString());
-        return res.getJSONArray("candidates")
-            .getJSONObject(0)
-            .getJSONObject("content")
-            .getJSONArray("parts")
-            .getJSONObject(0)
-            .getString("text");
+    private void appendLine(String text) {
+        String current = tvChatLog.getText().toString();
+        String updated = current.isEmpty() ? text : current + "\n" + text;
+        tvChatLog.setText(updated);
+        tvChatLog.startAnimation(AnimationUtils.loadAnimation(this, R.anim.fade_slide_in));
+        scrollLog.post(() -> scrollLog.fullScroll(ScrollView.FOCUS_DOWN));
     }
 }
