@@ -10,97 +10,116 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/mora_card"
-        android:gravity="center
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="14dp">
 
-mkdir -p ~/MoraAndroid/app/src/main/java/com/mora/assistant
+        <ImageView
+            android:id="@+id/ivLogo"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="Mora Logo"
+            android:src="@drawable/ic_launcher" />
 
-cat << 'EOF' > ~/MoraAndroid/app/src/main/java/com/mora/assistant/MoraAccessibilityService.java
-package com.mora.assistant;
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-import android.accessibilityservice.AccessibilityService;
-import android.os.Bundle;
-import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MORA AI"
+                android:textColor="@color/mora_accent"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-public class MoraAccessibilityService extends AccessibilityService {
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mora Ready (Android 11)"
+                android:textColor="@color/mora_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
 
-    private static MoraAccessibilityService instance;
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
 
-    public static MoraAccessibilityService getInstance() {
-        return instance;
-    }
+        <Button
+            android:id="@+id/btnAccessibility"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/mora_accent_alt"
+            android:text="ACCESSIBILITY"
+            android:textColor="@color/mora_text"
+            android:textSize="12sp" />
 
-    @Override
-    protected void onServiceConnected() {
-        super.onServiceConnected();
-        instance = this;
-    }
+        <Button
+            android:id="@+id/btnNotification"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/mora_card"
+            android:text="NOTIFICATIONS"
+            android:textColor="@color/mora_accent"
+            android:textSize="12sp" />
+    </LinearLayout>
 
-    @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
-        instance = this;
-    }
+    <ScrollView
+        android:id="@+id/scrollLog"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_weight="1"
+        android:background="@color/mora_card"
+        android:padding="14dp">
 
-    @Override
-    public void onInterrupt() {
-        instance = null;
-    }
+        <TextView
+            android:id="@+id/tvChatLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="5dp"
+            android:textColor="@color/mora_text"
+            android:textSize="14sp" />
+    </ScrollView>
 
-    public boolean clickTextOrDesc(String target) {
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null || target == null) return false;
-        return findAndClick(root, target.trim().toLowerCase());
-    }
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-    private boolean findAndClick(AccessibilityNodeInfo node, String target) {
-        if (node == null) return false;
-        CharSequence text = node.getText();
-        CharSequence desc = node.getContentDescription();
-        boolean match = (text != null && text.toString().toLowerCase().contains(target))
-                || (desc != null && desc.toString().toLowerCase().contains(target));
+        <EditText
+            android:id="@+id/etCommand"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:background="@color/mora_card"
+            android:hint="Ask Mora or give a command..."
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/mora_text"
+            android:textColorHint="@color/mora_muted"
+            android:textSize="14sp" />
 
-        if (match) {
-            AccessibilityNodeInfo current = node;
-            while (current != null) {
-                if (current.isClickable()) {
-                    current.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                    return true;
-                }
-                current = current.getParent();
-            }
-        }
-
-        for (int i = 0; i < node.getChildCount(); i++) {
-            if (findAndClick(node.getChild(i), target)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean typeInFocusedOrFirstEditText(String message) {
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null || message == null) return false;
-        AccessibilityNodeInfo target = findEditText(root);
-        if (target == null) return false;
-
-        target.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
-        Bundle args = new Bundle();
-        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, message);
-        return target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-    }
-
-    private AccessibilityNodeInfo findEditText(AccessibilityNodeInfo node) {
-        if (node == null) return null;
-        if (node.isEditable()) return node;
-        for (int i = 0; i < node.getChildCount(); i++) {
-            AccessibilityNodeInfo found = findEditText(node.getChild(i));
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    public boolean clickSendButton() {
-        return clickTextOrDesc("send") || clickTextOrDesc("পাঠান");
-    }
-}
+        <Button
+            android:id="@+id/btnSend"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:backgroundTint="@color/mora_accent"
+            android:text="SEND"
+            android:textColor="@color/mora_bg"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>
