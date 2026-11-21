@@ -61,7 +61,7 @@ public class MoraAccessibilityService extends AccessibilityService {
         return false;
     }
 
-    public boolean typeInFocusedOrFirstEditText(String message) {
+    public boolean typeInEditText(String message) {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null || message == null) return false;
         AccessibilityNodeInfo target = findEditText(root);

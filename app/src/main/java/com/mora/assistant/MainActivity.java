@@ -74,8 +74,7 @@ public class MainActivity extends AppCompatActivity {
             Intent launch = getPackageManager().getLaunchIntentForPackage("com.whatsapp");
             if (launch != null) {
                 startActivity(launch);
-                tvStatus.setText("WhatsApp খোলা হয়েছে — স্ক্রিন অ্যাকশন প্রস্তুত");
-                appendLine("Mora: WhatsApp খোলা হয়েছে। Accessibility চালু থাকলে স্ক্রিনের কন্ট্যাক্ট/ইনপুট অ্যাকশন চেষ্টা করা যাবে।");
+                tvStatus.setText("WhatsApp খোলা হয়েছে — স্ক্রিন অ্যাকশন সক্রিয়");
                 mainHandler.postDelayed(() -> {
                     MoraAccessibilityService service = MoraAccessibilityService.getInstance();
                     if (service != null) {
